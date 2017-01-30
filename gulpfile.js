@@ -12,6 +12,8 @@ var gulp = require('gulp'),
 	rimraf = require('rimraf'),
 	browserSync = require("browser-sync"),
 	notify = require('gulp-notify'),
+	argv = require('yargs').argv,
+	gulpif = require('gulp-if'),
 	reload = browserSync.reload;
 
 var path = {
@@ -96,11 +98,14 @@ gulp.task('js:build', function () {
 				)
 			)
 		)
-		.pipe(uglify().on('error', notify.onError(
-					{
-						message: "<%= error.message %>",
-						title  : "JS Error!"
-					}
+		.pipe(
+			gulpif(argv.production,
+				uglify().on('error', notify.onError(
+						{
+							message: "<%= error.message %>",
+							title  : "JS Error!"
+						}
+					)
 				)
 			)
 		)
@@ -111,7 +116,7 @@ gulp.task('js:build', function () {
 });
 
 gulp.task('style:build', function () {
-	return gulp.src(path.src.style)
+	gulp.src(path.src.style)
 		.pipe(sourcemaps.init())
 		.pipe(sass({
 			outputStyle: 'compressed',
@@ -135,7 +140,7 @@ gulp.task('style:build', function () {
 });
 
 gulp.task('image:build', function () {
-	return gulp.src(path.src.img)
+	gulp.src(path.src.img)
 		.pipe(imagemin({
 			progressive: true,
 			svgoPlugins: [{removeViewBox: false}],
@@ -147,16 +152,16 @@ gulp.task('image:build', function () {
 });
 
 gulp.task('fonts:build', function() {
-	return gulp.src(path.src.fonts)
+	gulp.src(path.src.fonts)
 		.pipe(gulp.dest(path.build.fonts))
 });
 
 gulp.task('build', [
 	'html:build',
-	'js:build',
 	'style:build',
-	'fonts:build',
-	'image:build'
+	'js:build',
+	'image:build',
+	'fonts:build'
 ]);
 
 
@@ -179,4 +184,4 @@ gulp.task('watch', function(){
 });
 
 
-gulp.task('default', ['clean', 'build', 'webserver', 'watch']);
+gulp.task('default', ['build', 'webserver', 'watch']);
