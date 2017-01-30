@@ -1,13 +1,14 @@
 "use strict";
 
 var gulp = require('gulp'),
+	watch = require('gulp-watch'),
+	include = require("gulp-include"),
 	prefixer = require('gulp-autoprefixer'),
 	uglify = require('gulp-uglify'),
 	sass = require('gulp-sass'),
 	sourcemaps = require('gulp-sourcemaps'),
-	rigger = require('gulp-rigger'),
 	imagemin = require('gulp-imagemin'),
-    pngquant = require('imagemin-pngquant'),
+	pngquant = require('imagemin-pngquant'),
 	rimraf = require('rimraf'),
 	browserSync = require("browser-sync"),
 	notify = require('gulp-notify'),
@@ -22,8 +23,8 @@ var path = {
 		fonts: 'build/fonts/'
 	},
 	src: {
-		html: 'src/**/*.html',
-		js: 'src/assets/js/main.js',
+		html: ['src/**/*.html', '!src/templates{,/**}'],
+		js: 'src/assets/js/app.js',
 		style: 'src/assets/style/app.scss',
 		img: 'src/assets/img/**/*.*',
 		fonts: 'src/fonts/**/*.*'
@@ -31,12 +32,18 @@ var path = {
 	watch: {
 		html: 'src/**/*.html',
 		js: 'src/assets/js/**/*.js',
-		style: 'src/assets/style/**/*',
+		style: 'src/assets/style/**/*.*',
 		img: 'src/assets/img/**/*.*',
 		fonts: 'src/fonts/**/*.*'
 	},
-	clean: './build'
+	clean: './build',
+	favicons: ['src/favicon.png','src/apple-touch-icon.png'],
+	bootstrap: './node_modules/bootstrap-sass/assets',
+	slick: './node_modules/slick-carousel/slick',
+	jquery: './node_modules/jquery/dist/',
+	sourcemaps: '../sourcemaps'
 };
+
 
 var config = {
 	server: {
@@ -58,16 +65,36 @@ gulp.task('clean', function (cb) {
 
 gulp.task('html:build', function () {
 	gulp.src(path.src.html)
-		.pipe(rigger())
+		.pipe(include({
+				extensions: "html",
+				hardFail: true,
+			}).on('error', notify.onError(
+					{
+						message: "<%= error.message %>",
+						title  : "HTML Error!"
+					}
+				)
+			)
+		)
 		.pipe(gulp.dest(path.build.html))
-		.pipe(reload({stream: true}))
-		.pipe(notify({ message: 'HTML task complete' }));
+		.pipe(reload({stream: true}));
 });
 
 gulp.task('js:build', function () {
 	gulp.src(path.src.js)
-		.pipe(rigger())
 		.pipe(sourcemaps.init())
+		.pipe(include({
+				extensions: "js",
+				hardFail: true,
+				includePaths: [path.slick, path.bootstrap, path.jquery]
+			}).on('error', notify.onError(
+					{
+						message: "<%= error.message %>",
+						title  : "JS Error!"
+					}
+				)
+			)
+		)
 		.pipe(uglify().on('error', notify.onError(
 					{
 						message: "<%= error.message %>",
@@ -76,19 +103,21 @@ gulp.task('js:build', function () {
 				)
 			)
 		)
-		.pipe(sourcemaps.write())
+		.pipe(sourcemaps.write(path.sourcemaps))
 		.pipe(gulp.dest(path.build.js))
-		.pipe(reload({stream: true}))
-		.pipe(notify({ message: 'JS task complete' }));
+		.pipe(notify({ message: 'JS task complete', sound: false, onLast: true }))
+		.pipe(reload({stream: true}));
 });
 
 gulp.task('style:build', function () {
-	gulp.src(path.src.style)
+	return gulp.src(path.src.style)
+		.pipe(sourcemaps.init())
 		.pipe(sass({
-			includePaths: ['src/style/'],
 			outputStyle: 'compressed',
-			sourceMap: true,
-			errLogToConsole: false
+			precision: 8,
+			//sourceMap: true,
+			//errLogToConsole: true
+			includePaths: [path.bootstrap + '/stylesheets'],
 		}).on( 'error', notify.onError(
 				{
 					message: "<%= error.message %>",
@@ -97,14 +126,15 @@ gulp.task('style:build', function () {
 			)
 		))
 		.pipe(prefixer())
+		.pipe(sourcemaps.write(path.sourcemaps))
 		// .pipe(cssmin())
 		.pipe(gulp.dest(path.build.css))
-		.pipe(reload({stream: true}))
-		.pipe(notify({ message: 'Styles task complete' }));
+		.pipe(notify({ message: 'Styles task complete', sound: false, onLast: true }))
+		.pipe(reload({stream: true}));
 });
 
 gulp.task('image:build', function () {
-	gulp.src(path.src.img)
+	return gulp.src(path.src.img)
 		.pipe(imagemin({
 			progressive: true,
 			svgoPlugins: [{removeViewBox: false}],
@@ -116,7 +146,7 @@ gulp.task('image:build', function () {
 });
 
 gulp.task('fonts:build', function() {
-	gulp.src(path.src.fonts)
+	return gulp.src(path.src.fonts)
 		.pipe(gulp.dest(path.build.fonts))
 });
 
@@ -130,22 +160,22 @@ gulp.task('build', [
 
 
 gulp.task('watch', function(){
-	gulp.watch(path.watch.html, function(event, cb) {
+	watch(path.watch.html, function(event, cb) {
 		gulp.start('html:build');
 	});
-	gulp.watch(path.watch.style, function(event, cb) {
+	watch(path.watch.style, function(event, cb) {
 		gulp.start('style:build');
 	});
-	gulp.watch(path.watch.js, function(event, cb) {
+	watch(path.watch.js, function(event, cb) {
 		gulp.start('js:build');
 	});
-	gulp.watch(path.watch.img, function(event, cb) {
+	watch(path.watch.img, function(event, cb) {
 		gulp.start('image:build');
 	});
-	gulp.watch(path.watch.fonts, function(event, cb) {
+	watch(path.watch.fonts, function(event, cb) {
 		gulp.start('fonts:build');
 	});
 });
 
 
-gulp.task('default', ['build', 'webserver', 'watch']);
+gulp.task('default', ['clean', 'build', 'webserver', 'watch']);
