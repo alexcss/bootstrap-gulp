@@ -25,6 +25,7 @@ var path = {
 	src: {
 		html: ['src/**/*.html', '!src/templates{,/**}'],
 		js: 'src/assets/js/app.js',
+		jsfolder: 'src/assets/js/',
 		style: 'src/assets/style/app.scss',
 		img: 'src/assets/img/**/*.*',
 		fonts: 'src/fonts/**/*.*'
@@ -86,7 +87,7 @@ gulp.task('js:build', function () {
 		.pipe(include({
 				extensions: "js",
 				hardFail: true,
-				includePaths: [path.slick, path.bootstrap, path.jquery]
+				includePaths: [path.slick, path.bootstrap, path.jquery, path.src.jsfolder]
 			}).on('error', notify.onError(
 					{
 						message: "<%= error.message %>",
@@ -117,7 +118,7 @@ gulp.task('style:build', function () {
 			precision: 8,
 			//sourceMap: true,
 			//errLogToConsole: true
-			includePaths: [path.bootstrap + '/stylesheets'],
+			includePaths: [path.bootstrap + '/stylesheets', path.slick],
 		}).on( 'error', notify.onError(
 				{
 					message: "<%= error.message %>",
