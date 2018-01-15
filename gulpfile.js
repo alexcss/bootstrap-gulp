@@ -13,8 +13,11 @@ var gulp = require('gulp'),
 	browserSync = require("browser-sync"),
 	notify = require('gulp-notify'),
 	argv = require('yargs').argv,
-	gulpif = require('gulp-if'),
+	$if = require('gulp-if'),
 	reload = browserSync.reload;
+
+// Check for -p "production" flag
+var isProduction = !!(argv.p);
 
 var path = {
 	build: {
@@ -30,7 +33,8 @@ var path = {
 		jsfolder: 'src/assets/js/',
 		style: 'src/assets/style/app.scss',
 		img: 'src/assets/img/**/*.*',
-		fonts: 'src/fonts/**/*.*'
+		fonts: 'src/fonts/**/*.*',
+		favicons: ['src/favicon.png','src/apple-touch-icon.png']
 	},
 	watch: {
 		html: 'src/**/*.html',
@@ -40,7 +44,6 @@ var path = {
 		fonts: 'src/fonts/**/*.*'
 	},
 	clean: './build',
-	favicons: ['src/favicon.png','src/apple-touch-icon.png'],
 	bootstrap: './node_modules/bootstrap-sass/assets',
 	slick: './node_modules/slick-carousel/slick',
 	jquery: './node_modules/jquery/dist/',
@@ -85,7 +88,9 @@ gulp.task('html:build', function () {
 
 gulp.task('js:build', function () {
 	gulp.src(path.src.js)
-		.pipe(sourcemaps.init())
+		.pipe(
+			$if(!isProduction, sourcemaps.init())
+		)
 		.pipe(include({
 				extensions: "js",
 				hardFail: true,
@@ -99,7 +104,7 @@ gulp.task('js:build', function () {
 			)
 		)
 		.pipe(
-			gulpif(argv.production,
+			$if(isProduction,
 				uglify().on('error', notify.onError(
 						{
 							message: "<%= error.message %>",
@@ -109,6 +114,9 @@ gulp.task('js:build', function () {
 				)
 			)
 		)
+		.pipe(
+			$if(!isProduction, sourcemaps.write(path.sourcemaps))
+		)
 		.pipe(sourcemaps.write(path.sourcemaps))
 		.pipe(gulp.dest(path.build.js))
 		.pipe(notify({ message: 'JS task complete', sound: false, onLast: true }))
@@ -117,7 +125,9 @@ gulp.task('js:build', function () {
 
 gulp.task('style:build', function () {
 	gulp.src(path.src.style)
-		.pipe(sourcemaps.init())
+		.pipe(
+			$if(!isProduction, sourcemaps.init())
+		)
 		.pipe(sass({
 			outputStyle: 'compressed',
 			precision: 8,
@@ -132,8 +142,9 @@ gulp.task('style:build', function () {
 			)
 		))
 		.pipe(prefixer())
-		.pipe(sourcemaps.write(path.sourcemaps))
-		// .pipe(cssmin())
+		.pipe(
+			$if(!isProduction, sourcemaps.write(path.sourcemaps))
+		)
 		.pipe(gulp.dest(path.build.css))
 		.pipe(notify({ message: 'Styles task complete', sound: false, onLast: true }))
 		.pipe(reload({stream: true}));
@@ -156,12 +167,18 @@ gulp.task('fonts:build', function() {
 		.pipe(gulp.dest(path.build.fonts))
 });
 
+gulp.task('favicons:build', function() {
+	gulp.src(path.src.favicons)
+		.pipe(gulp.dest(path.build.html))
+});
+
 gulp.task('build', [
 	'html:build',
 	'style:build',
 	'js:build',
 	'image:build',
-	'fonts:build'
+	'fonts:build',
+	'favicons:build'
 ]);
 
 
@@ -180,6 +197,9 @@ gulp.task('watch', function(){
 	});
 	watch(path.watch.fonts, function(event, cb) {
 		gulp.start('fonts:build');
+	});
+	watch(path.src.favicons, function(event, cb) {
+		gulp.start('favicons:build');
 	});
 });
 
